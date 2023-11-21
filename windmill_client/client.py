@@ -21,34 +21,6 @@ logger = logging.getLogger("windmill_client")
 JobStatus = Literal["RUNNING", "WAITING", "COMPLETED"]
 
 
-class State(dict):
-    def __setitem__(self, key, value):
-        super().__setitem__(key, value)
-        _client.set_state(self)
-
-    def __delitem__(self, key):
-        super().__delitem__(key)
-        _client.set_state(self)
-
-    def update(self, *args, **kwargs):
-        for k, v in dict(*args, **kwargs).items():
-            self.__setitem__(k, v)
-
-    def clear(self):
-        super().clear()
-        _client.set_state(self)
-
-    def pop(self, key, *args):
-        result = super().pop(key, *args)
-        _client.set_state(self)
-        return result
-
-    def popitem(self):
-        result = super().popitem()
-        _client.set_state(self)
-        return result
-
-
 class Windmill:
     def __init__(self, base_url=None, token=None):
         base = base_url or os.environ.get("BASE_INTERNAL_URL")
@@ -362,9 +334,8 @@ class Windmill:
         return state_path
 
     @property
-    def state(self) -> State:
-        data = self.get_resource(path=self.state_path, none_if_undefined=True) or {}
-        return State(**data)
+    def state(self) -> Any:
+        return self.get_resource(path=self.state_path, none_if_undefined=True)
 
     @staticmethod
     def set_shared_state_pickle(value: Any, path: str = "state.pickle") -> None:
