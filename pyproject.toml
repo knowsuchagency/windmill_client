@@ -9,7 +9,7 @@ readme = "README.md"
 authors = [{name = "Stephan Fitzpatrick", email = "knowsuchagency@gmail.com"}]
 license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: MIT License"]
-version = "0.5.1"
+version = "0.5.2-alpha.3"
 dependencies = [
     "httpx~=0.25",
 ]
