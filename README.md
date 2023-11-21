@@ -32,6 +32,10 @@ job_id = client.create_job(path="path/to/script")
 # Check job status
 status = client.get_job_status(job_id)
 print(f"Job Status: {status}")
+
+# run a script synchronously
+result = client.run_script(path="path/to/script")
+print(f"Script Result: {result}")
 ```
 
 #### Methods
