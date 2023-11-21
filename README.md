@@ -17,12 +17,6 @@ pip install windmill-client
 
 ## Usage
 
-To use `windmill_client`, you need to import it in your Python script:
-
-```python
-
-```
-
 ### Basic Example
 
 Here's a basic example of how to use `windmill_client`:
