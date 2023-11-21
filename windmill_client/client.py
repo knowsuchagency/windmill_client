@@ -71,15 +71,11 @@ class Windmill:
 
     def get(self, endpoint, **kwargs) -> httpx.Response:
         endpoint = endpoint.lstrip("/")
-        resp = self.client.get(f"/{endpoint}", **kwargs)
-        resp.raise_for_status()
-        return resp
+        return self.client.get(f"/{endpoint}", **kwargs)
 
     def post(self, endpoint, **kwargs) -> httpx.Response:
         endpoint = endpoint.lstrip("/")
-        resp = self.client.post(f"/{endpoint}", **kwargs)
-        resp.raise_for_status()
-        return resp
+        return self.client.post(f"/{endpoint}", **kwargs)
 
     def create_token(self, duration=dt.timedelta(days=1)) -> str:
         endpoint = "/users/tokens/create"
