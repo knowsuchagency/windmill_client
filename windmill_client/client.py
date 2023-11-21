@@ -23,8 +23,7 @@ JobStatus = Literal["RUNNING", "WAITING", "COMPLETED"]
 
 class State(dict):
     def __setitem__(self, key, value):
-        self.update(_client.state)
-        self[key] = value
+        super().__setitem__(key, value)
         _client.set_state(self)
 
     def __delitem__(self, key):
@@ -102,9 +101,9 @@ class Windmill:
         args = args or {}
         params = {"scheduled_in_secs": scheduled_in_secs} if scheduled_in_secs else {}
         if path:
-            endpoint = f"/w/{self.workspace}/jobs/create/p/{path}"
+            endpoint = f"/w/{self.workspace}/jobs/run/p/{path}"
         elif hash_:
-            endpoint = f"/w/{self.workspace}/jobs/create/h/{hash_}"
+            endpoint = f"/w/{self.workspace}/jobs/run/h/{hash_}"
         else:
             raise Exception("path or hash_ must be provided")
         return self.post(endpoint, json=args, params=params).text
