@@ -61,9 +61,9 @@ class Windmill:
             "label": f"refresh {time.time()}",
             "expiration": (dt.datetime.now() + duration).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
-        return self.post(endpoint, json=payload, refresh_client=False).text
+        return self.post(endpoint, json=payload).text
 
-    def create_job(
+    def start_execution(
         self,
         path: str = None,
         hash_: str = None,
@@ -91,7 +91,7 @@ class Windmill:
         verbose: bool = False,
         cleanup: bool = True,
         assert_result_is_not_none: bool = True,
-    ):
+    ) -> Any:
         """Run script synchronously and return its result."""
         args = args or {}
 
@@ -103,7 +103,7 @@ class Windmill:
 
         start_time = time.time()
 
-        job_id = self.create_job(path=path, hash_=hash_, args=args)
+        job_id = self.start_execution(path=path, hash_=hash_, args=args)
 
         def cancel_job():
             logger.warning(f"cancelling job: {job_id}")
@@ -433,13 +433,13 @@ def get_version() -> str:
 
 
 @init_global_client
-@deprecate("Windmill().create_job(...)")
+@deprecate("Windmill().start_execution(...)")
 def run_script_async(
     hash: str,
     args: Dict[str, Any] = None,
     scheduled_in_secs: int = None,
 ) -> str:
-    return _client.create_job(
+    return _client.start_execution(
         hash_=hash,
         args=args,
         scheduled_in_secs=scheduled_in_secs,
@@ -455,7 +455,7 @@ def run_script_sync(
     assert_result_is_not_none: bool = True,
     cleanup: bool = True,
     timeout: dt.timedelta = None,
-) -> Dict[str, Any]:
+) -> Any:
     return _client.run_script(
         hash_=hash,
         args=args,
@@ -467,13 +467,13 @@ def run_script_sync(
 
 
 @init_global_client
-@deprecate("Windmill().create_job(...)")
+@deprecate("Windmill().start_execution(...)")
 def run_script_by_path_async(
     path: str,
     args: Dict[str, Any] = None,
     scheduled_in_secs: Union[None, int] = None,
 ) -> str:
-    return _client.create_job(
+    return _client.start_execution(
         path=path,
         args=args,
         scheduled_in_secs=scheduled_in_secs,
@@ -484,12 +484,12 @@ def run_script_by_path_async(
 @deprecate("Windmill().run_script(...)")
 def run_script_by_path_sync(
     path: str,
-    args: Dict[str, Any] = {},
+    args: Dict[str, Any] = None,
     verbose: bool = False,
     assert_result_is_not_none: bool = True,
     cleanup: bool = True,
     timeout: dt.timedelta = None,
-) -> Dict[str, Any]:
+) -> Any:
     return _client.run_script(
         path=path,
         args=args,

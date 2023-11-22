@@ -27,7 +27,7 @@ import windmill_client as wmill
 client = wmill.Windmill()
 
 # Create a new job
-job_id = client.create_job(path="path/to/script")
+job_id = client.start_execution(path="path/to/script")
 
 # Check job status
 status = client.get_job_status(job_id)
