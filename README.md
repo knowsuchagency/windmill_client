@@ -37,11 +37,3 @@ print(f"Job Status: {status}")
 result = client.run_script(path="path/to/script")
 print(f"Script Result: {result}")
 ```
-
-#### Methods
-
-- `create_job(self, path=None, hash_=None, args=None, scheduled_in_secs=None)`: Create a new job.
-- `get_job_status(self, job_id)`: Get the status of a specified job.
-- `run_script(self, path=None, hash_=None, args=None, timeout=None, verbose=False, cleanup=True, assert_result_is_not_none=True)`: Run a script synchronously.
-- `get_variable(self, path)`: Get a variable from Windmill.
-- `set_variable(self, path, value)`: Set a variable in Windmill.
