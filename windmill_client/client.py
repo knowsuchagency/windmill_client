@@ -361,6 +361,10 @@ class Windmill:
     def state(self) -> Any:
         return self.get_resource(path=self.state_path, none_if_undefined=True)
 
+    @state.setter
+    def state(self, value: Any) -> None:
+        self.set_state(value)
+
     @staticmethod
     def set_shared_state_pickle(value: Any, path: str = "state.pickle") -> None:
         """
