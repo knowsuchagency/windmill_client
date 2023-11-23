@@ -647,3 +647,25 @@ def get_resume_urls(approver: str = None) -> dict:
 def cancel_running() -> dict:
     """Cancel currently running executions of the same script."""
     return _client.cancel_running()
+
+
+@init_global_client
+def run_script(
+    path: str = None,
+    hash_: str = None,
+    args: dict = None,
+    timeout: dt.timedelta | int | float = None,
+    verbose: bool = False,
+    cleanup: bool = True,
+    assert_result_is_not_none: bool = True,
+) -> Any:
+    """Run script synchronously and return its result."""
+    return _client.run_script(
+        path=path,
+        hash_=hash_,
+        args=args,
+        verbose=verbose,
+        assert_result_is_not_none=assert_result_is_not_none,
+        cleanup=cleanup,
+        timeout=timeout,
+    )
