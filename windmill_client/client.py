@@ -15,7 +15,6 @@ import httpx
 
 _client: "Windmill | None" = None
 
-
 logger = logging.getLogger("windmill_client")
 
 JobStatus = Literal["RUNNING", "WAITING", "COMPLETED"]
@@ -45,14 +44,24 @@ class Windmill:
         endpoint = endpoint.lstrip("/")
         resp = self.client.get(f"/{endpoint}", **kwargs)
         if raise_for_status:
-            resp.raise_for_status()
+            try:
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as err:
+                error = f"{err.request.url}: {err.response.status_code}, {err.response.text}"
+                logger.error(error)
+                raise Exception(error)
         return resp
 
     def post(self, endpoint, raise_for_status=True, **kwargs) -> httpx.Response:
         endpoint = endpoint.lstrip("/")
         resp = self.client.post(f"/{endpoint}", **kwargs)
         if raise_for_status:
-            resp.raise_for_status()
+            try:
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as err:
+                error = f"{err.request.url}: {err.response.status_code}, {err.response.text}"
+                logger.error(error)
+                raise Exception(error)
         return resp
 
     def create_token(self, duration=dt.timedelta(days=1)) -> str:
@@ -63,7 +72,7 @@ class Windmill:
         }
         return self.post(endpoint, json=payload).text
 
-    def start_execution(
+    def run_script_async(
         self,
         path: str = None,
         hash_: str = None,
@@ -103,7 +112,7 @@ class Windmill:
 
         start_time = time.time()
 
-        job_id = self.start_execution(path=path, hash_=hash_, args=args)
+        job_id = self.run_script_async(path=path, hash_=hash_, args=args)
 
         def cancel_job():
             logger.warning(f"cancelling job: {job_id}")
@@ -143,9 +152,9 @@ class Windmill:
                 return result
 
             if verbose:
-                logger.info(f"sleeping 3 seconds for {job_id = }")
+                logger.info(f"sleeping 0.5 seconds for {job_id = }")
 
-            time.sleep(3)
+            time.sleep(0.5)
 
     def cancel_running(self) -> dict:
         """Cancel currently running executions of the same script."""
@@ -181,7 +190,10 @@ class Windmill:
         return result
 
     def get_job_status(self, job_id: str) -> JobStatus:
-        resp = self.get(f"/w/{self.workspace}/jobs_u/get/{job_id}", raise_for_status=False)
+        resp = self.get(
+            f"/w/{self.workspace}/jobs_u/get/{job_id}",
+            raise_for_status=False,
+        )
         assert not resp.status_code == 404, f"{job_id} not found"
         resp_json = resp.json()
         job_type = resp_json.get("type", "")
@@ -211,12 +223,14 @@ class Windmill:
 
     def get_variable(self, path: str) -> str:
         """Get variable from Windmill"""
-        return self.get(f"/w/{self.workspace}/variables/get/{path}").json()["value"]
+        return self.get(f"/w/{self.workspace}/variables/get_value/{path}").json()
 
     def set_variable(self, path: str, value: str) -> None:
         """Set variable from Windmill"""
         # check if variable exists
-        r = self.get(f"/w/{self.workspace}/variables/get/{path}", raise_for_status=False)
+        r = self.get(
+            f"/w/{self.workspace}/variables/get/{path}", raise_for_status=False
+        )
         if r.status_code == 404:
             # create variable
             self.post(
@@ -242,11 +256,13 @@ class Windmill:
     ) -> str | None:
         """Get resource from Windmill"""
         try:
-            return self.get(f"/w/{self.workspace}/resources/get/{path}").json()["value"]
+            return self.get(
+                f"/w/{self.workspace}/resources/get_value_interpolated/{path}"
+            ).json()
         except Exception as e:
-            logger.error(e)
             if none_if_undefined:
                 return None
+            logger.error(e)
             raise e
 
     def set_resource(
@@ -256,7 +272,9 @@ class Windmill:
         resource_type: str,
     ):
         # check if resource exists
-        r = self.get(f"/w/{self.workspace}/resources/get/{path}", raise_for_status=False)
+        r = self.get(
+            f"/w/{self.workspace}/resources/get/{path}", raise_for_status=False
+        )
         if r.status_code == 404:
             # create resource
             self.post(
@@ -385,8 +403,9 @@ class Windmill:
 
     def get_resume_urls(self, approver: str = None) -> dict:
         nonce = random.randint(0, 1000000000)
+        job_id = os.environ.get("WM_JOB_ID") or "NO_ID"
         return self.get(
-            f"/w/{self.workspace}/jobs_u/get_resume_urls/{self.path}/{nonce}",
+            f"/w/{self.workspace}/jobs/resume_urls/{job_id}/{nonce}",
             params={"approver": approver},
         ).json()
 
@@ -421,7 +440,6 @@ def deprecate(in_favor_of: str):
 
 
 @init_global_client
-@deprecate("Windmill().workspace")
 def get_workspace() -> str:
     return _client.workspace
 
@@ -433,13 +451,12 @@ def get_version() -> str:
 
 
 @init_global_client
-@deprecate("Windmill().start_execution(...)")
 def run_script_async(
     hash: str,
     args: Dict[str, Any] = None,
     scheduled_in_secs: int = None,
 ) -> str:
-    return _client.start_execution(
+    return _client.run_script_async(
         hash_=hash,
         args=args,
         scheduled_in_secs=scheduled_in_secs,
@@ -447,7 +464,6 @@ def run_script_async(
 
 
 @init_global_client
-@deprecate("Windmill().run_script(...)")
 def run_script_sync(
     hash: str,
     args: Dict[str, Any] = None,
@@ -467,13 +483,12 @@ def run_script_sync(
 
 
 @init_global_client
-@deprecate("Windmill().start_execution(...)")
 def run_script_by_path_async(
     path: str,
     args: Dict[str, Any] = None,
     scheduled_in_secs: Union[None, int] = None,
 ) -> str:
-    return _client.start_execution(
+    return _client.run_script_async(
         path=path,
         args=args,
         scheduled_in_secs=scheduled_in_secs,
@@ -481,7 +496,6 @@ def run_script_by_path_async(
 
 
 @init_global_client
-@deprecate("Windmill().run_script(...)")
 def run_script_by_path_sync(
     path: str,
     args: Dict[str, Any] = None,
@@ -501,19 +515,16 @@ def run_script_by_path_sync(
 
 
 @init_global_client
-@deprecate("Windmill().get_job_status(...)")
 def get_job_status(job_id: str) -> JobStatus:
     return _client.get_job_status(job_id)
 
 
 @init_global_client
-@deprecate("Windmill().get_result(...)")
 def get_result(*args, **kwargs) -> Dict[str, Any]:
     return _client.get_result(*args, **kwargs)
 
 
 @init_global_client
-@deprecate("Windmill().get_duckdb_connection_settings(...)")
 def duckdb_connection_settings(*args, **kwargs) -> Union[str, None]:
     """
     Convenient helpers that takes an S3 resource as input and returns the settings necessary to
@@ -523,7 +534,6 @@ def duckdb_connection_settings(*args, **kwargs) -> Union[str, None]:
 
 
 @init_global_client
-@deprecate("Windmill().get_polars_connection_settings(...)")
 def polars_connection_settings(*args, **kwargs) -> Any:
     """
     Convenient helpers that takes an S3 resource as input and returns the settings necessary to
@@ -533,7 +543,6 @@ def polars_connection_settings(*args, **kwargs) -> Any:
 
 
 @init_global_client
-@deprecate("Windmill().user")
 def whoami() -> dict:
     """
     Returns the current user
@@ -551,7 +560,15 @@ def get_state() -> Any:
 
 
 @init_global_client
-@deprecate("Windmill().set_resource(...)")
+def get_resource(
+    path: str,
+    none_if_undefined: bool = False,
+) -> str | None:
+    """Get resource from Windmill"""
+    return _client.get_resource(path, none_if_undefined)
+
+
+@init_global_client
 def set_resource(**kwargs) -> None:
     """
     Set the resource at a given path as a string, creating it if it does not exist
@@ -560,7 +577,6 @@ def set_resource(**kwargs) -> None:
 
 
 @init_global_client
-@deprecate("Windmill().set_state(...)")
 def set_state(value: Any) -> None:
     """
     Set the state
@@ -568,7 +584,6 @@ def set_state(value: Any) -> None:
     return _client.set_state(value)
 
 
-@deprecate("Windmill.set_shared_state_pickle(...)")
 def set_shared_state_pickle(**kwargs) -> None:
     """
     Set the state in the shared folder using pickle
@@ -584,7 +599,6 @@ def get_shared_state_pickle(**kwargs) -> Any:
     return Windmill.get_shared_state_pickle(**kwargs)
 
 
-@deprecate("Windmill.set_shared_state(...)")
 def set_shared_state(**kwargs) -> None:
     """
     Set the state in the shared folder using pickle
@@ -592,7 +606,6 @@ def set_shared_state(**kwargs) -> None:
     return Windmill.set_shared_state(**kwargs)
 
 
-@deprecate("Windmill.get_shared_state(...)")
 def get_shared_state(**kwargs) -> None:
     """
     Set the state in the shared folder using pickle
@@ -601,7 +614,6 @@ def get_shared_state(**kwargs) -> None:
 
 
 @init_global_client
-@deprecate("Windmill().get_variable(...)")
 def get_variable(path: str) -> str:
     """
     Returns the variable at a given path as a string
@@ -610,7 +622,6 @@ def get_variable(path: str) -> str:
 
 
 @init_global_client
-@deprecate("Windmill().set_variable(...)")
 def set_variable(path: str, value: str) -> None:
     """
     Set the variable at a given path as a string, creating it if it does not exist
@@ -619,12 +630,16 @@ def set_variable(path: str, value: str) -> None:
 
 
 @init_global_client
-@deprecate("Windmill().state_path")
 def get_state_path() -> str:
     return _client.state_path
 
 
 @init_global_client
-@deprecate("Windmill().get_resume_urls(...)")
 def get_resume_urls(approver: str = None) -> dict:
     return _client.get_resume_urls(approver)
+
+
+@init_global_client
+def cancel_running() -> dict:
+    """Cancel currently running executions of the same script."""
+    return _client.cancel_running()
