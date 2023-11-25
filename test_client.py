@@ -40,6 +40,11 @@ def test_run_script_sync(client, script):
     assert result is not None
 
 
+def test_run_script(client, script):
+    result = wmill.run_script(script.path)
+    assert result is not None
+
+
 def test_get_job_status(client, script):
     # Start an asynchronous job
     job_id = wmill.run_script_async(hash=script.hash)
